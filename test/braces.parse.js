@@ -3,12 +3,32 @@
 require('mocha');
 const assert = require('assert').strict;
 const parse = require('../lib/parse');
+const constants = require('../lib/constants');
 
 describe('braces.parse()', () => {
   describe('errors', () => {
     it('should throw an error when string exceeds max safe length', () => {
       const MAX_LENGTH = 1024 * 64;
       assert.throws(() => parse('.'.repeat(MAX_LENGTH + 2)));
+    });
+
+    it('should throw an error when brace nesting exceeds max depth', () => {
+      const nested = depth => '{a,'.repeat(depth - 1) + '{a,b}' + '}'.repeat(depth - 1);
+      const MAX_DEPTH = constants.MAX_DEPTH;
+
+      assert.equal(parse(nested(MAX_DEPTH)).type, 'root');
+      assert.throws(() => parse(nested(MAX_DEPTH + 1)), /exceeds max depth/);
+      assert.throws(() => parse('{'.repeat(MAX_DEPTH + 1)), /exceeds max depth/);
+    });
+
+    it('should respect the maxDepth option', () => {
+      assert.throws(() => parse('{a,{a,b}}', { maxDepth: 1 }), /exceeds max depth/);
+      assert.equal(parse('{a,{a,b}}', { maxDepth: 2 }).type, 'root');
+    });
+
+    it('should not allow maxDepth to raise the limit', () => {
+      const nested = depth => '{a,'.repeat(depth - 1) + '{a,b}' + '}'.repeat(depth - 1);
+      assert.throws(() => parse(nested(constants.MAX_DEPTH + 1), { maxDepth: 1e6 }), /exceeds max depth/);
     });
   });
 

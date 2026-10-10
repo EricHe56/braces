@@ -186,6 +186,25 @@ console.log(braces.expand('a{b}c'));
 console.log(braces('a/{b,c}/d', { maxLength: 3 })); //=> throws an error
 ```
 
+### options.maxDepth
+
+**Type**: `Number`
+
+**Default**: `1,000`
+
+**Description**: Limit the nesting depth of the brace pattern. Patterns nested more deeply than `maxDepth` throw a `SyntaxError`. Deeply nested patterns are expanded and compiled by recursive tree walkers, so an unbounded depth can exhaust the call stack and terminate the process (see [CVE-2026-93687](https://github.com/micromatch/braces/issues/70)).
+
+The default is far above any pattern that occurs in practice, so it needs no attention unless your application passes untrusted patterns and you want a tighter bound.
+
+This option may only lower the limit; a larger `maxDepth` is clamped to the default of 1,000 so that the depth guard cannot be configured away.
+
+```js
+console.log(braces('a/{b,{c,d}}/e', { maxDepth: 1 })); //=> throws an error
+
+// nesting within the limit is unaffected
+console.log(braces('a/{b,{c,d}}/e')); //=> ['a/(b|(c|d))/e']
+```
+
 ### options.expand
 
 **Type**: `Boolean`

@@ -435,3 +435,67 @@ describe('range expansion', () => {
     equal('{1..ff}', ['{1..ff}']);
   });
 });
+
+describe('deeply nested patterns (CVE-2026-93687)', () => {
+  const constants = require('../lib/constants');
+  const nested = depth => '{a,'.repeat(depth - 1) + '{a,b}' + '}'.repeat(depth - 1);
+  const MAX_DEPTH = constants.MAX_DEPTH;
+
+  const deepAst = depth => {
+    let node = { type: 'brace', nodes: [] };
+    const ast = { type: 'root', nodes: [node] };
+    for (let i = 1; i < depth; i++) {
+      const child = { type: 'brace', nodes: [] };
+      node.nodes.push(child);
+      node = child;
+    }
+    node.nodes.push({ type: 'text', value: 'a' });
+    return ast;
+  };
+
+  it('should reject patterns nested beyond the depth limit', () => {
+    const pattern = nested(MAX_DEPTH + 1);
+    assert.throws(() => braces(pattern), /exceeds max depth/);
+    assert.throws(() => braces(pattern, { expand: true }), /exceeds max depth/);
+    assert.throws(() => braces.compile(pattern), /exceeds max depth/);
+    assert.throws(() => braces.expand(pattern), /exceeds max depth/);
+    assert.throws(() => braces.stringify(pattern), /exceeds max depth/);
+  });
+
+  it('should not overflow the call stack on deeply nested patterns', () => {
+    // Well beyond the limit while still under the 10,000 character cap, and far
+    // past the depth at which the recursive walkers used to exhaust the stack.
+    for (const pattern of [nested(1500), '{'.repeat(1500), '{a,'.repeat(1499)]) {
+      assert.throws(() => braces(pattern), /exceeds max depth/);
+      assert.throws(() => braces(pattern, { expand: true }), /exceeds max depth/);
+    }
+  });
+
+  it('should not overflow the call stack on a deeply nested AST', () => {
+    // A pre-built AST never goes through parse(), so the walkers bound
+    // themselves as well.
+    const ast = deepAst(100000);
+    assert.throws(() => braces.compile(ast), RangeError);
+    assert.throws(() => braces.expand(ast), RangeError);
+    assert.throws(() => braces.stringify(ast), RangeError);
+  });
+
+  it('should still expand patterns within the depth limit', () => {
+    equal(nested(MAX_DEPTH), [...Array(MAX_DEPTH).fill('a'), 'b']);
+    equal('x' + nested(MAX_DEPTH - 1) + 'y', [...Array(MAX_DEPTH - 1).fill('xay'), 'xby']);
+  });
+
+  it('should allow maxDepth to lower the limit but not raise it', () => {
+    assert.equal(constants.MAX_DEPTH, 1000);
+
+    // Lowering the limit rejects nesting that is otherwise accepted.
+    assert.throws(() => braces(nested(MAX_DEPTH), { maxDepth: 10 }), /exceeds max depth/);
+    assert.throws(() => braces(nested(1001), { maxDepth: 5000 }), /exceeds max depth/);
+    assert.throws(() => braces(nested(1500), { maxDepth: 5000 }), /exceeds max depth/);
+  });
+
+  it('should support a custom maxDepth', () => {
+    assert.throws(() => braces('{a,{a,{a,b}}}', { maxDepth: 2 }), /exceeds max depth/);
+    assert.deepEqual(braces('{a,{a,{a,b}}}', { maxDepth: 3, expand: true }), ['a', 'a', 'a', 'b']);
+  });
+});

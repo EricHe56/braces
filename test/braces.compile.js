@@ -4,11 +4,35 @@ require('mocha');
 const assert = require('assert').strict;
 const compile = require('../lib/compile');
 const parse = require('../lib/parse');
+const constants = require('../lib/constants');
+
+/**
+ * Build a deeply nested AST directly, without going through parse(), so the test
+ * covers the walker guard rather than the parser's depth limit.
+ */
+
+const deepAst = depth => {
+  let node = { type: 'brace', nodes: [] };
+  const ast = { type: 'root', nodes: [node] };
+  for (let i = 1; i < depth; i++) {
+    const child = { type: 'brace', nodes: [] };
+    node.nodes.push(child);
+    node = child;
+  }
+  node.nodes.push({ type: 'text', value: 'a' });
+  return ast;
+};
 
 describe('braces.compile()', () => {
   describe('errors', () => {
     it('should throw an error when invalid args are passed', () => {
       assert.throws(() => compile());
+    });
+
+    it('should not overflow the call stack on a deeply nested AST', () => {
+      // parse() never runs for a pre-built AST, so the walker itself must bound
+      // its recursion (CVE-2026-93687).
+      assert.throws(() => compile(deepAst(constants.MAX_DEPTH * 1000)), RangeError);
     });
   });
 
