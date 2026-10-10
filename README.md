@@ -9,7 +9,37 @@ Please consider following this project's author, [Jon Schlinkert](https://github
 Install with [npm](https://www.npmjs.com/):
 
 ```sh
-$ npm install --save braces
+$ npm install --save @eriche/braces
+```
+
+> **This is a security fork.** `@eriche/braces` is [braces](https://github.com/micromatch/braces) 3.0.3 with a fix for [CVE-2026-93687](https://github.com/micromatch/braces/issues/70) (BDSA-2026-33749), the unbounded brace-nesting recursion that could crash the Node.js process. See the [fork note](#security-fork-cve-2026-93687) below.
+
+## Security fork (CVE-2026-93687)
+
+`3.0.3-patch.1` bounds brace nesting depth so that a short but deeply nested pattern can no longer exhaust the call stack:
+
+- `parse()` throws a `SyntaxError` beyond `options.maxDepth` (default `1,000`); the option may lower the limit but a larger value is clamped, so the guard cannot be configured away.
+- The recursive tree walkers in `compile`, `expand` and `stringify` bound their own recursion, which also protects the API methods that accept a pre-built AST.
+
+Compatibility: for every pattern that does not exceed the limit, output is byte-for-byte identical to `braces@3.0.3` (verified over the full test corpus: 15,952 comparisons across 1,994 patterns × 8 API modes, zero differences).
+
+### Version numbering
+
+This version is a semver **pre-release**, which sorts *below* `3.0.3`. `npm install braces@^3.0.0` will never select it, and it is published under the `eriche-patch` dist-tag rather than `latest` so that it cannot downgrade anyone.
+
+```sh
+$ npm install --save @eriche/braces@3.0.3-patch.1
+$ npm install --save @eriche/braces@eriche-patch   # same thing
+```
+
+To use it as a drop-in replacement for the `braces` package without editing every `require`:
+
+```json
+{
+  "dependencies": {
+    "braces": "npm:@eriche/braces@3.0.3-patch.1"
+  }
+}
 ```
 
 ## v3.0.0 Released!!

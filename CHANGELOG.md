@@ -32,7 +32,9 @@ Changelog entries are classified using the following labels _(from [keep-a-chang
 
 </details>
 
-## [Unreleased]
+## [3.0.3-patch.1] - 2026-10-10
+
+Security fork of `braces@3.0.3`, published as [`@eriche/braces`](https://www.npmjs.com/package/@eriche/braces).
 
 ### Security
 
@@ -43,6 +45,16 @@ Changelog entries are classified using the following labels _(from [keep-a-chang
 ### Added
 
 - `options.maxDepth`, to lower the maximum brace nesting depth.
+
+### Changed
+
+- Package renamed to `@eriche/braces`; `repository`, `bugs` and `homepage` point at the fork.
+- `publishConfig.access` is `public`, so the scoped package is published publicly.
+
+### Notes
+
+- This version is a semver pre-release, so it sorts below `3.0.3`: `braces@^3.0.0` will not select it. It is published under the `eriche-patch` dist-tag, never `latest`. Install it explicitly, or alias it as described in the README.
+- Behavior is otherwise identical to `3.0.3`: the full test corpus produces byte-identical output for every pattern within the depth limit (15,952 comparisons, zero differences).
 
 ## [3.0.0] - 2018-04-08
 

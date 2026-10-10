@@ -13,6 +13,8 @@ coverage
 # npm
 node_modules
 npm-debug.log
+.npmrc
+*.tgz
 
 # yarn
 yarn.lock
